@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>钢材重量计算器</title>
+<style>
+:root {
+  --navy: #0f2a44; --navy-light: #1a3a5c;
+  --orange: #e85d3a; --orange-light: #fef3ef;
+  --gray-50: #f8f9fa; --gray-100: #edf0f5; --gray-200: #dde1e8;
+  --gray-300: #c0c6d0; --gray-500: #8490a0; --gray-700: #4a5468;
+  --gray-900: #1a1f2e;
+  --green: #2d9a5e; --green-light: #edf7f2;
+  --radius: 12px; --radius-sm: 8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
+  background:var(--gray-50);color:var(--gray-900);line-height:1.5;padding-bottom:80px}
+.no-trans *,.no-trans *::before,.no-trans *::after{transition:none!important}
+
+.header{background:var(--navy);color:#fff;padding:14px 18px;position:sticky;top:0;z-index:100}
+.header h1{font-size:19px;font-weight:700;letter-spacing:.3px}
+.header p{font-size:12px;opacity:.65;margin-top:2px}
+
+.tabs{display:flex;background:var(--gray-100);padding:4px;margin:12px 16px;border-radius:var(--radius);flex-shrink:0;}
+.tab{flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;border-radius:calc(var(--radius)-4px);
+  cursor:pointer;transition:.2s;color:var(--gray-500);user-select:none;-webkit-tap-highlight-color:transparent}
+.tab.active{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.tab-cont{display:none;padding:0 16px}
+.tab-cont.active{display:block}
+
+.search-wrap{position:relative;margin-bottom:10px}
+.search-wrap input{width:100%;padding:13px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);
+  font-size:16px;outline:none;transition:.2s;background:#fff}
+.search-wrap input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(15,42,68,.12)}
+
+.spec-list{max-height:220px;overflow-y:auto;background:#fff;border-radius:var(--radius-sm);
+  border:1px solid var(--gray-200);margin-bottom:10px}
+.spec-item{padding:11px 14px;font-size:14px;border-bottom:1px solid var(--gray-100);
+  cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.spec-item:last-child{border-bottom:none}
+.spec-item:active{background:var(--gray-100)}
+.spec-item .s-name{flex:1}
+.spec-item .s-cat{font-size:11px;color:var(--gray-500);background:var(--gray-100);padding:2px 8px;border-radius:10px;margin:0 8px;white-space:nowrap}
+.spec-item .s-wgt{color:var(--gray-500);font-size:13px;white-space:nowrap}
+.spec-empty{padding:24px;text-align:center;color:var(--gray-500);font-size:14px}
+
+.sel-card{background:#fff;border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.08);padding:18px;margin-bottom:10px;transition:.2s}
+.sel-card .sc-top{display:flex;justify-content:space-between;align-items:start;margin-bottom:10px}
+.sel-card .sc-name{font-size:17px;font-weight:700;color:var(--navy)}
+.sel-card .sc-meta{font-size:12px;color:var(--gray-500)}
+.sel-card .sc-cat{font-size:11px;color:var(--gray-500);background:var(--gray-100);padding:3px 10px;border-radius:12px}
+.input-row{display:flex;gap:12px;margin-bottom:10px}
+.input-group{flex:1}
+.input-group label{display:block;font-size:12px;font-weight:600;color:var(--gray-700);margin-bottom:4px}
+.input-group input{width:100%;padding:11px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);
+  font-size:17px;text-align:center;outline:none;transition:.15s}
+.input-group input:focus{border-color:var(--navy)}
+.result-line{display:flex;gap:0;margin-bottom:10px}
+.result-line .rl-item{flex:1;text-align:center;padding:8px 0}
+.result-line .rl-val{font-size:22px;font-weight:700;color:var(--orange)}
+.result-line .rl-lbl{font-size:12px;color:var(--gray-500)}
+.btn-row{display:flex;gap:10px}
+.btn{flex:1;padding:12px;border:none;border-radius:var(--radius);font-size:15px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
+.btn:active{opacity:.85;transform:scale(.97)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:disabled{background:var(--gray-200);color:var(--gray-500);cursor:not-allowed;transform:none}
+.btn-outline{background:var(--gray-100);color:var(--gray-700)}
+
+/* Bottom summary bar */
+.summary-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;box-shadow:0 -2px 12px rgba(0,0,0,.1);
+  z-index:200;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.summary-bar .sb-row{display:flex;justify-content:space-between;align-items:center}
+.summary-bar .sb-total{font-size:13px;color:var(--gray-500)}
+.summary-bar .sb-total strong{font-size:22px;color:var(--orange);margin-left:6px}
+.summary-bar .sb-action{color:var(--gray-500);font-size:13px;cursor:pointer;padding:4px 8px}
+
+/* Summary detail overlay */
+.summary-detail{display:none;position:fixed;bottom:52px;left:0;right:0;background:#fff;
+  border-radius:var(--radius) var(--radius) 0 0;box-shadow:0 -4px 16px rgba(0,0,0,.12);
+  z-index:199;max-height:50vh;overflow-y:auto}
+.summary-detail.show{display:block}
+.sd-hd{padding:14px 16px 8px;font-size:14px;font-weight:700;color:var(--gray-700);display:flex;justify-content:space-between}
+.sd-item{display:flex;padding:10px 16px;align-items:center;gap:8px;font-size:13px;border-top:1px solid var(--gray-100)}
+.sd-item .sd-spec{flex:1;font-weight:500}
+.sd-item .sd-wgt{color:var(--orange);font-weight:700}
+.sd-item .sd-del{color:var(--gray-300);font-size:18px;cursor:pointer;padding:4px}
+.sd-empty{padding:30px;text-align:center;color:var(--gray-500);font-size:14px}
+
+/* Custom calc */
+.sec{background:#fff;border-radius:var(--radius);box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;overflow:hidden}
+.sec-hd{background:var(--navy);color:#fff;padding:12px 16px;font-size:14px;font-weight:600}
+.sec-body{padding:14px 16px}
+.sec .inp-row{display:grid;gap:10px;margin-bottom:10px}
+.sec .inp-row.c2{grid-template-columns:1fr 1fr}
+.sec .inp-row.c3{grid-template-columns:1fr 1fr 1fr}
+.sec .inp-row.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.sec .ig label{display:block;font-size:11px;color:var(--gray-500);margin-bottom:2px}
+.sec .ig input{width:100%;padding:9px 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);
+  font-size:15px;text-align:center;outline:none}
+.sec .ig input:focus{border-color:var(--navy)}
+.sec-res{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;
+  background:var(--orange-light);border-radius:var(--radius-sm);margin-bottom:8px}
+.sec-res .sr-lbl{font-size:13px;font-weight:600;color:var(--gray-700)}
+.sec-res .sr-val{font-size:20px;font-weight:700;color:var(--orange)}
+.sec-add{padding:11px;border:none;border-radius:var(--radius-sm);background:var(--gray-100);
+  color:var(--gray-700);font-size:14px;font-weight:600;cursor:pointer;width:100%;transition:.15s}
+.sec-add:active{opacity:.7}
+.sec-add:disabled{color:var(--gray-300);cursor:not-allowed}
+
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--gray-900);
+  color:#fff;padding:10px 22px;border-radius:20px;font-size:14px;z-index:999;
+  opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>钢材重量计算器</h1>
+  <p>搜规格 · 输长度 · 自动算重</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="quick" onclick="switchTab('quick')">快速查重</div>
+  <div class="tab" data-tab="custom" onclick="switchTab('custom')">自定义计算</div>
+</div>
+
+<div id="tab-quick" class="tab-cont active">
+<div class="search-wrap">
+  <input id="search" type="text" placeholder="搜索品类或规格名称（如 HN400、L50、D108）" autocomplete="off">
+</div>
+<div id="specList" class="spec-list" style="display:none"></div>
+<div id="selCard" class="sel-card" style="display:none"></div>
+</div>
+
+<div id="tab-custom" class="tab-cont">
+<div id="customSections"></div>
+</div>
+
+<!-- Summary bar -->
+<div class="summary-bar" id="summaryBar" style="display:none">
+  <div class="sb-row">
+    <div class="sb-total">合计 <strong id="totalWeight">0.00</strong> kg</div>
+    <div class="sb-action" id="sbToggle" onclick="toggleSummary()">查看明细 ▴</div>
+  </div>
+</div>
+<div class="summary-detail" id="summaryDetail">
+  <div class="sd-hd">
+    <span>计算明细</span>
+    <span onclick="clearAll()" style="color:var(--gray-500);font-weight:400;font-size:13px;cursor:pointer">清空</span>
+  </div>
+  <div id="summaryList"></div>
+  <div class="sd-empty" id="sdEmpty">暂无记录</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== DATA =====================
+const DATA = {
+  HN:[["HN100x50x5x7",9.30],["HN125x60x6x8",13.1],["HN150x75x5x7",14.0],
+    ["HN175x90x5x8",18.0],["HN198x99x4.5x7",17.8],["HN200x100x5.5x8",20.9],
+    ["HN248x124x5x8",25.1],["HN250x125x6x9",29.0],["HN298x149x5.5x8",32.0],
+    ["HN300x150x6.5x9",36.7],["HN346x174x6x9",41.2],["HN350x175x7x11",49.4],
+    ["HN396x199x7x11",56.1],["HN400x200x8x13",65.4],["HN446x199x8x12",65.1],
+    ["HN450x200x9x14",74.9],["HN496x199x9x14",77.9],["HN500x200x10x16",88.1],
+    ["HN506x201x11x19",102],["HN546x199x9x14",81.5],["HN550x200x10x16",92.0],
+    ["HN596x199x10x15",92.4],["HN600x200x11x17",103],["HN606x201x12x20",118],
+    ["HN646x299x12x18",144],["HN650x300x13x20",159],["HN654x301x14x22",173],
+    ["HN692x300x13x20",163],["HN700x300x13x24",182],["HN734x299x12x16",143],
+    ["HN742x300x13x20",168],["HN750x300x13x24",187],["HN758x303x16x28",224],
+    ["HN792x300x14x22",188],["HN800x300x14x26",207],["HN834x298x14x19",179],
+    ["HN842x299x15x23",204],["HN850x300x16x27",229],["HN858x301x17x31",255],
+    ["HN890x299x15x23",210],["HN900x300x16x28",240],["HN912x302x18x34",283],
+    ["HN970x297x16x21",217],["HN980x298x17x26",248],["HN990x298x17x31",271],
+    ["HN1000x300x19x36",310],["HN1008x302x21x40",345]],
+  HM:[["HM148x100x6x9",20.7],["HM194x150x6x9",29.9],["HM244x175x7x11",43.6],
+    ["HM294x200x8x12",55.8],["HM298x201x9x14",64.4],["HM340x250x9x14",78.1],
+    ["HM390x300x10x16",105],["HM440x300x11x18",121],["HM482x300x11x15",111],
+    ["HM488x300x11x18",125],["HM544x300x11x15",116],["HM550x300x11x18",130],
+    ["HM582x300x12x17",133],["HM588x300x12x20",147],["HM594x302x14x23",170]],
+  HW:[["HW100x100x6x8",16.9],["HW125x125x6.5x9",23.6],["HW150x150x7x10",31.1],
+    ["HW175x175x7.5x11",40.4],["HW200x200x8x12",49.9],["HW200x204x12x12",56.2],
+    ["HW250x250x9x14",71.8],["HW250x255x14x14",81.6],["HW300x300x10x15",93.0],
+    ["HW300x305x15x15",105],["HW350x350x12x19",135],["HW350x357x19x19",154],
+    ["HW400x400x13x21",172],["HW400x408x21x21",197],["HW500x500x15x20",202]],
+  HT:[["HT95x48x3.2x4.5",5.98],["HT97x49x4x5.5",7.36],["HT96x99x4.5x6",12.7],
+    ["HT118x58x3.2x4.5",7.26],["HT120x59x4x5.5",8.94],["HT119x123x4.5x6",15.8],
+    ["HT145x73x3.2x4.5",9.00],["HT147x74x4x5.5",11.1],["HT139x97x3.2x4.5",10.6],
+    ["HT142x99x4.5x6",14.3],["HT144x148x5x7",21.8],["HT147x149x6x8.5",26.4],
+    ["HT168x88x3.2x4.5",10.6],["HT171x89x4x6",13.8],["HT167x173x5x7",26.2],
+    ["HT172x175x6.5x9.5",35.0],["HT193x98x3.2x4.5",12.0],["HT196x99x4x6",15.5],
+    ["HT188x149x4.5x6",20.7],["HT192x198x6x8",34.3],["HT244x124x4.5x6",20.3],
+    ["HT238x173x4.5x8",30.7],["HT294x148x4.5x6",25.0],["HT286x198x6x8",38.7],
+    ["HT340x173x4.5x6",29.0],["HT390x148x6x8",37.3],["HT390x198x6x8",43.6]],
+  ZH:[["H300x200x8x12",55.0],["H350x200x8x12",58.2],["H400x200x8x13",64.3],
+    ["H450x200x9x14",73.8],["H500x200x10x16",87.0],["H500x250x12x16",107],
+    ["H550x250x12x18",119],["H600x250x12x18",124],["H600x300x12x20",147],
+    ["H650x300x14x22",170],["H700x300x13x24",180],["H800x300x14x25",200],
+    ["H900x300x16x28",238],["H1000x300x20x36",315],["H300x300x10x15",91.8],
+    ["H350x350x12x19",134],["H400x400x13x21",168],["H450x450x16x25",227],
+    ["H500x500x20x30",305],["H700x400x16x28",257],["H800x400x18x30",293],
+    ["H900x400x20x35",350],["H700x350x14x25",209],["H800x350x16x28",247],
+    ["H900x350x18x30",284]],
+  IB:[["I10(100x68x4.5x7.6)",11.26],["I12.6(126x74x5x8.4)",14.22],
+    ["I14(140x80x5.5x9.1)",16.89],["I16(160x88x6x9.9)",20.51],
+    ["I18(180x94x6.5x10.7)",24.14],["I20a(200x100x7x11.4)",27.93],
+    ["I20b(200x102x9x11.4)",31.07],["I22a(220x110x7.5x12.3)",33.07],
+    ["I22b(220x112x9.5x12.3)",36.52],["I25a(250x116x8x13)",38.11],
+    ["I25b(250x118x10x13)",42.03],["I28a(280x122x8.5x13.7)",43.49],
+    ["I28b(280x124x10.5x13.7)",47.89],["I32a(320x130x9.5x15)",52.72],
+    ["I32b(320x132x11.5x15)",57.74],["I36a(360x136x10x15.8)",60.04],
+    ["I36b(360x138x12x15.8)",65.69],["I40a(400x142x10.5x16.5)",67.60],
+    ["I40b(400x144x12.5x16.5)",73.88],["I45a(450x150x11.5x18)",80.42],
+    ["I45b(450x152x13.5x18)",87.49],["I56a(560x166x12.5x21)",106.3],
+    ["I56b(560x168x14.5x21)",115.1],["I63a(630x176x13x22)",121.4],
+    ["I63b(630x178x15x22)",131.3]],
+  CH:[["C5(50x37x4.5x7)",5.438],["C6.3(63x40x4.8x7.5)",6.634],
+    ["C8(80x43x5x8)",8.045],["C10(100x48x5.3x8.5)",10.01],
+    ["C12.6(126x53x5.5x9)",12.32],["C14a(140x58x6x9.5)",14.54],
+    ["C14b(140x60x8x9.5)",16.73],["C16a(160x63x6.5x10)",17.24],
+    ["C16b(160x65x8.5x10)",19.75],["C18a(180x68x7x10.5)",20.17],
+    ["C18b(180x70x9x10.5)",23.00],["C20a(200x73x7x11)",22.64],
+    ["C20b(200x75x9x11)",25.78],["C22a(220x77x7x11.5)",25.00],
+    ["C22b(220x79x9x11.5)",28.45],["C25a(250x78x7x12)",27.41],
+    ["C25b(250x80x9x12)",31.34],["C28a(280x82x7.5x12.5)",31.43],
+    ["C28b(280x84x9.5x12.5)",35.82],["C32a(320x88x8x14)",38.08],
+    ["C32b(320x90x10x14)",43.11],["C36a(360x96x9x16)",47.81],
+    ["C36b(360x98x11x16)",53.47],["C40a(400x100x10.5x18)",58.93],
+    ["C40b(400x102x12.5x18)",65.21]],
+  EA:[["L20x3",0.889],["L20x4",1.145],["L25x3",1.124],["L25x4",1.459],
+    ["L30x3",1.373],["L30x4",1.786],["L36x3",1.656],["L36x4",2.163],["L36x5",2.654],
+    ["L40x3",1.852],["L40x4",2.422],["L40x5",2.976],
+    ["L45x3",2.088],["L45x4",2.736],["L45x5",3.369],["L45x6",3.985],
+    ["L50x3",2.332],["L50x4",3.059],["L50x5",3.770],["L50x6",4.465],
+    ["L63x4",3.907],["L63x5",4.822],["L63x6",5.721],["L63x8",7.469],
+    ["L70x5",5.397],["L70x6",6.406],["L70x7",7.398],["L70x8",8.373],
+    ["L75x5",5.818],["L75x6",6.905],["L75x7",7.976],["L75x8",9.030],["L75x10",11.09],
+    ["L80x5",6.211],["L80x6",7.376],["L80x7",8.525],["L80x8",9.658],["L80x10",11.87],
+    ["L90x6",8.350],["L90x7",9.656],["L90x8",10.95],["L90x10",13.48],
+    ["L100x6",9.366],["L100x7",10.83],["L100x8",12.28],["L100x10",15.12],
+    ["L100x12",17.90],["L110x7",11.93],["L110x8",13.53],["L110x10",16.69],
+    ["L110x12",19.78],["L125x8",15.50],["L125x10",19.13],["L125x12",22.70],
+    ["L125x14",26.19],["L140x10",21.49],["L140x12",25.52],["L140x14",29.49],
+    ["L140x16",33.39],["L160x10",24.73],["L160x12",29.39],["L160x14",33.99],
+    ["L160x16",38.52],["L180x12",33.16],["L180x14",38.38],["L180x16",43.54],
+    ["L180x18",48.63],["L200x14",42.89],["L200x16",48.68],["L200x18",54.40],
+    ["L200x20",60.06],["L200x24",71.17]],
+  UA:[["L25x16x3",0.912],["L25x16x4",1.176],["L32x20x3",1.171],["L32x20x4",1.522],
+    ["L40x25x3",1.484],["L40x25x4",1.936],["L45x28x4",2.203],
+    ["L50x32x4",2.489],["L56x36x4",2.806],["L56x36x5",3.466],
+    ["L63x40x4",3.185],["L63x40x5",3.920],["L63x40x6",4.638],["L63x40x7",5.339],
+    ["L70x45x5",4.403],["L70x45x6",5.218],["L70x45x7",6.011],
+    ["L75x50x5",4.808],["L75x50x6",5.699],["L75x50x8",7.431],["L75x50x10",9.098],
+    ["L80x50x5",4.990],["L80x50x6",5.935],["L80x50x7",6.848],["L80x50x8",7.745],
+    ["L90x56x5",5.661],["L90x56x6",6.717],["L90x56x7",7.756],["L90x56x8",8.779],
+    ["L100x63x6",7.550],["L100x63x7",8.722],["L100x63x8",9.878],["L100x63x10",12.14],
+    ["L100x80x6",8.350],["L100x80x7",9.656],["L100x80x8",10.95],["L100x80x10",13.48],
+    ["L125x80x7",11.07],["L125x80x8",12.55],["L125x80x10",15.47],
+    ["L125x80x12",18.33],["L140x90x8",14.16],["L140x90x10",17.48],
+    ["L140x90x12",20.72],["L140x90x14",23.91],
+    ["L160x100x10",19.85],["L160x100x12",23.59],["L160x100x14",27.27],
+    ["L160x100x16",30.89],["L180x110x10",22.27],["L180x110x12",26.46],
+    ["L200x125x12",29.76],["L200x125x14",34.44],["L200x125x16",39.05],
+    ["L200x125x18",43.59]],
+  PP:[["D20x2",0.888],["D20x2.5",1.08],["D25x2.5",1.39],["D25x3",1.63],
+    ["D32x2.5",1.82],["D32x3",2.15],["D32x3.5",2.46],
+    ["D38x3",2.59],["D38x3.5",2.98],["D42x3",2.89],["D42x3.5",3.32],["D42x4",3.75],
+    ["D48x3",3.33],["D48x3.5",3.84],["D48x4",4.34],
+    ["D50x3",3.48],["D50x4",4.54],["D50x5",5.55],
+    ["D57x3",4.00],["D57x3.5",4.62],["D57x4",5.23],["D57x5",6.41],
+    ["D60x3",4.22],["D60x4",5.52],["D60x5",6.78],
+    ["D73x4",6.81],["D73x5",8.38],["D73x6",9.91],
+    ["D76x4",7.10],["D76x5",8.75],["D76x6",10.4],
+    ["D89x4",8.38],["D89x5",10.4],["D89x6",12.3],["D89x8",16.0],
+    ["D102x4",9.67],["D102x6",14.2],["D102x8",18.5],
+    ["D108x4",10.3],["D108x5",12.7],["D108x6",15.1],
+    ["D114x5",13.4],["D114x6",16.0],["D127x6",17.9],["D127x8",23.5],
+    ["D133x5",15.8],["D133x6",18.8],["D133x8",24.7],
+    ["D140x6",19.8],["D140x8",26.0],["D159x6",22.6],["D159x8",29.8],["D159x10",36.7],
+    ["D168x8",31.6],["D168x10",39.0],["D180x8",33.9],["D180x10",41.9],
+    ["D194x8",36.7],["D194x10",45.4],["D219x8",41.6],["D219x10",51.5],
+    ["D245x10",58.0],["D273x10",64.9]]
+};
+const CAT_NAMES = {HN:'窄翼缘H型钢(梁)',HM:'中翼缘H型钢(梁柱)',HW:'宽翼缘H型钢(柱)',
+  HT:'薄壁H型钢(轻型)',ZH:'组焊H型钢(非标)',IB:'工字钢',CH:'槽钢',
+  EA:'等边角钢',UA:'不等边角钢',PP:'钢管'};
+const ALL_SPECS = [];
+for (const [cat, specs] of Object.entries(DATA)) {
+  for (const [name, kgm] of specs) ALL_SPECS.push({cat, name, kgm});
+}
+
+// ===================== STATE =====================
+let items = [];
+let curSel = null, lenVal = 0, qtyVal = 1;
+
+// ===================== DOM =====================
+const searchEl = document.getElementById('search');
+const specListEl = document.getElementById('specList');
+const selCardEl = document.getElementById('selCard');
+const summaryBarEl = document.getElementById('summaryBar');
+const summaryDetailEl = document.getElementById('summaryDetail');
+const summaryListEl = document.getElementById('summaryList');
+const totalWeightEl = document.getElementById('totalWeight');
+const sdEmptyEl = document.getElementById('sdEmpty');
+const toastEl = document.getElementById('toast');
+
+// ===================== CUSTOM CALC =====================
+const CUSTOM_SECS = [
+  {title:'焊接H型钢(组焊)', keys:['h','b','tw','tf','l','q'],
+   labels:['腹板高H(mm)','翼缘宽B(mm)','腹板厚tw(mm)','翼缘厚tf(mm)','长度(m)','数量(根)'], cols:3,
+   calc:v=>v.h&&v.b&&v.tw&&v.tf&&v.l?((v.h-2*v.tf)*v.tw+2*v.b*v.tf)*7.85/1000*v.l*(v.q||1):null,
+   labelFn:v=>`焊接H${v.h}x${v.b}x${v.tw}x${v.tf} L=${v.l}`},
+  {title:'方管/矩形管', keys:['a','b','t','l','q'],
+   labels:['边长A(mm)','边长B(mm)','壁厚t(mm)','长度(m)','数量(根)'], cols:3,
+   calc:v=>v.a&&v.b&&v.t&&v.l?(v.a+v.b)*2*v.t*v.l*(v.q||1)*0.00785:null,
+   labelFn:v=>`方管${v.a}x${v.b}x${v.t} L=${v.l}`},
+  {title:'圆管(自定义)', keys:['d','t','l','q'],
+   labels:['外径D(mm)','壁厚t(mm)','长度(m)','数量(根)'], cols:2,
+   calc:v=>v.d&&v.t&&v.l?Math.PI*(v.d-v.t)*v.t*v.l*(v.q||1)*0.00785:null,
+   labelFn:v=>`圆管D${v.d}x${v.t} L=${v.l}`},
+  {title:'角钢(自定义)', keys:['a','b','t','l','q'],
+   labels:['边宽A(mm)','边宽B(mm)','边厚t(mm)','长度(m)','数量(根)'], cols:3,
+   calc:v=>v.a&&v.b&&v.t&&v.l?(v.a+v.b-v.t)*v.t*v.l*(v.q||1)*0.00785:null,
+   labelFn:v=>`角钢${v.a}x${v.b}x${v.t} L=${v.l}`},
+  {title:'钢板', keys:['l2','w','t','q'],
+   labels:['长度(m)','宽度(m)','厚度(mm)','数量(块)'], cols:2,
+   calc:v=>v.l2&&v.w&&v.t?v.l2*v.w*v.t*(v.q||1)*7.85:null,
+   labelFn:v=>`钢板${v.l2}x${v.w}x${v.t}`},
+];
+
+function renderCustomSections() {
+  document.getElementById('customSections').innerHTML = CUSTOM_SECS.map((sec, si) =>
+    `<div class="sec">
+      <div class="sec-hd">${sec.title}</div>
+      <div class="sec-body">
+        <div class="inp-row c${sec.cols}">${sec.keys.map((key, fi) =>
+          `<div class="ig"><label>${sec.labels[fi]}</label>
+            <input type="number" step="any" min="0" id="cs_${si}_${key}" placeholder="0" oninput="calcCustom(${si})">
+          </div>`
+        ).join('')}</div>
+        <div class="sec-res">
+          <span class="sr-lbl">计算结果</span>
+          <span class="sr-val" id="cs_res_${si}">—</span>
+        </div>
+        <button class="sec-add" id="cs_add_${si}" disabled onclick="addCustomFromSec(${si})">+ 加入计算明细</button>
+      </div>
+    </div>`
+  ).join('');
+  window._csv = CUSTOM_SECS.map(() => ({}));
+}
+
+function calcCustom(si) {
+  const sec = CUSTOM_SECS[si];
+  const vals = {};
+  for (const key of sec.keys) {
+    const el = document.getElementById(`cs_${si}_${key}`);
+    const v = parseFloat(el.value);
+    vals[key] = isNaN(v) ? 0 : v;
+  }
+  const res = sec.calc(vals);
+  document.getElementById(`cs_res_${si}`).textContent = res !== null ? res.toFixed(1) + ' kg' : '—';
+  document.getElementById(`cs_add_${si}`).disabled = res === null || res <= 0;
+  window._csv[si] = {vals, res, label: res !== null ? sec.labelFn(vals) : ''};
+}
+
+function addCustomFromSec(si) {
+  const data = window._csv[si];
+  if (!data || data.res === null || data.res <= 0) return;
+  addCustomItem(data.label, data.res);
+}
+
+// ===================== INIT =====================
+document.body.classList.add('no-trans');
+init();
+requestAnimationFrame(() => document.body.classList.remove('no-trans'));
+
+function init() {
+  renderCustomSections();
+  searchEl.addEventListener('input', onSearch);
+}
+
+// ===================== SEARCH (ALL CATEGORIES) =====================
+function onSearch() {
+  const q = searchEl.value.trim().toLowerCase();
+  if (!q) { specListEl.style.display = 'none'; return; }
+  const matched = ALL_SPECS.filter(s => s.name.toLowerCase().includes(q) || s.cat.toLowerCase().includes(q));
+  if (matched.length === 0) {
+    specListEl.innerHTML = '<div class="spec-empty">未匹配到规格，试试其他关键词</div>';
+  } else {
+    specListEl.innerHTML = matched.slice(0, 50).map(s =>
+      `<div class="spec-item" onclick="selectSpec('${s.cat}','${s.name.replace(/'/g,"\\'")}',${s.kgm})">
+        <span class="s-name">${s.name}</span>
+        <span class="s-cat">${s.cat}</span>
+        <span class="s-wgt">${s.kgm.toFixed(1)} kg/m</span>
+      </div>`
+    ).join('');
+  }
+  specListEl.style.display = 'block';
+}
+
+// ===================== SPEC SELECTION =====================
+function selectSpec(cat, name, kgm) {
+  curSel = {cat, name, kgm};
+  lenVal = 0; qtyVal = 1;
+  specListEl.style.display = 'none';
+  searchEl.value = name;
+  renderSelCard();
+  selCardEl.style.display = 'block';
+}
+function renderSelCard() {
+  if (!curSel) { selCardEl.style.display = 'none'; return; }
+  selCardEl.innerHTML = `
+    <div class="sc-top">
+      <div>
+        <div class="sc-name">${curSel.name}</div>
+        <div class="sc-meta">米重 ${curSel.kgm.toFixed(1)} kg/m</div>
+      </div>
+      <span class="sc-cat">${curSel.cat}</span>
+    </div>
+    <div class="input-row">
+      <div class="input-group"><label>长度 (m)</label>
+        <input type="number" step="0.1" min="0" value="" placeholder="0"
+          oninput="onLenChange(this.value)"></div>
+      <div class="input-group"><label>数量 (根)</label>
+        <input type="number" step="1" min="1" value="1" oninput="onQtyChange(this.value)"></div>
+    </div>
+    <div class="result-line">
+      <div class="rl-item"><div class="rl-val" id="card_single">0.0</div><div class="rl-lbl">kg/根</div></div>
+      <div class="rl-item"><div class="rl-val" id="card_total">0.0</div><div class="rl-lbl">合计 (kg)</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="card_add_btn" onclick="addItem()" disabled>+ 加入明细</button>
+      <button class="btn btn-outline" onclick="cancelSel()">取消</button>
+    </div>`;
+}
+function updateCardResults() {
+  if (!curSel) return;
+  const kgm = curSel.kgm, len = lenVal || 0, qty = qtyVal || 1;
+  const elS = document.getElementById('card_single');
+  const elT = document.getElementById('card_total');
+  const elBtn = document.getElementById('card_add_btn');
+  if (elS) elS.textContent = (kgm * len).toFixed(1);
+  if (elT) elT.textContent = (kgm * len * qty).toFixed(1);
+  if (elBtn) elBtn.disabled = !lenVal || lenVal <= 0;
+}
+function onLenChange(v) { lenVal = parseFloat(v) || 0; updateCardResults(); }
+function onQtyChange(v) { qtyVal = parseInt(v) || 1; updateCardResults(); }
+function cancelSel() { curSel = null; selCardEl.style.display = 'none'; searchEl.value = ''; specListEl.style.display = 'none'; }
+
+// ===================== ADD / REMOVE / CLEAR =====================
+function addItem() {
+  if (!curSel) return;
+  var len = parseFloat(lenVal) || 0;
+  if (len <= 0) return;
+  var qty = parseInt(qtyVal) || 1;
+  var total = curSel.kgm * len * qty;
+  items.push({
+    spec: curSel.name, cat: curSel.cat, kgm: curSel.kgm,
+    len: len, qty: qty, total: total
+  });
+  updateSummary();
+  var btn = document.getElementById('card_add_btn');
+  if (btn) {
+    btn.textContent = '\u2714 \u5df2\u52a0\u5165';
+    btn.disabled = true;
+    btn.style.background = '#2d9a5e';
+    setTimeout(function() {
+      btn.textContent = '+ \u52a0\u5165\u660e\u7ec6';
+      btn.disabled = false;
+      btn.style.background = '';
+    }, 900);
+  }
+  showToast('\u2714 \u5df2\u52a0\u5165\u660e\u7ec6');
+}
+function addCustomItem(label, totalW) {
+  if (!totalW || totalW <= 0) return;
+  items.push({
+    spec: label, cat: '\u81ea\u5b9a\u4e49', kgm: null, len: null, qty: 1, total: totalW
+  });
+  updateSummary();
+  showToast('\u2714 \u5df2\u52a0\u5165\u660e\u7ec6');
+}
+function removeItem(idx) { items.splice(idx, 1); updateSummary(); }
+function clearAll() { items = []; updateSummary(); }
+
+function updateSummary() {
+  if (items.length > 0) {
+    summaryBarEl.style.display = 'block';
+    const total = items.reduce((s, it) => s + it.total, 0);
+    totalWeightEl.textContent = total.toFixed(1);
+    summaryListEl.innerHTML = items.map((it, i) =>
+      `<div class="sd-item">
+        <span class="sd-spec">${it.spec}</span>
+        <span class="sd-wgt">${it.total.toFixed(1)} kg</span>
+        <span class="sd-del" onclick="removeItem(${i})">✕</span>
+      </div>`
+    ).join('');
+    sdEmptyEl.style.display = 'none';
+  } else {
+    summaryBarEl.style.display = 'none';
+    summaryDetailEl.classList.remove('show');
+  }
+}
+function toggleSummary() {
+  if (items.length === 0) return;
+  summaryDetailEl.classList.toggle('show');
+  document.getElementById('sbToggle').textContent =
+    summaryDetailEl.classList.contains('show') ? '收起 ▾' : '查看明细 ▴';
+}
+
+// ===================== TABS =====================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-cont').forEach(t => t.classList.toggle('active', t.id === 'tab-'+name));
+  if (summaryDetailEl.classList.contains('show')) toggleSummary();
+}
+
+
+</script>
+</body>
+</html>
