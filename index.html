@@ -195,7 +195,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans S
 
 <div id="tab-quick" class="tab-cont active">
 <div class="search-wrap">
-  <input id="search" type="text" placeholder="输入型号查找，试试 HN400、L50、CHS159" autocomplete="off">
+  <input id="search" type="text" placeholder="" autocomplete="off">
 </div>
 <div id="catTags" class="cat-tags"></div>
 <div id="specList" class="spec-list" style="display:none"></div>
@@ -1177,7 +1177,10 @@ function toggleSec(si) {
 // ===================== INIT =====================
 document.body.classList.add('no-trans');
 init();
-requestAnimationFrame(() => document.body.classList.remove('no-trans'));
+requestAnimationFrame(function() {
+  document.body.classList.remove('no-trans');
+  typePlaceholder();
+});
 
 function init() {
   renderCustomSections();
@@ -1190,6 +1193,20 @@ function init() {
   renderCatTags();
   searchEl.addEventListener('input', onSearch);
   for (var i = 0; i < CUSTOM_SECS.length; i++) calcCustom(i);
+}
+
+function typePlaceholder() {
+  var text = '输入型号查找，试试 HN400、L50、CHS159';
+  var el = document.getElementById('search');
+  var idx = 0;
+  function tick() {
+    if (idx < text.length) {
+      el.placeholder += text.charAt(idx);
+      idx++;
+      setTimeout(tick, 70);
+    }
+  }
+  tick();
 }
 
 // ===================== CATEGORY QUICK TAGS =====================
